@@ -1,0 +1,51 @@
+apiVersion: machinelearning.seldon.io/v1alpha2
+kind: SeldonDeployment
+metadata:
+  labels:
+    app: seldon
+  name: fraud-detection-canary
+  namespace: seldon
+spec:
+  name: fraud-detection-canary
+  annotations:
+    project_name: fraud_detection_service
+    deployment_version: v1
+  predictors:
+    - name: fraud-xgb
+      replicas: 1
+      traffic: 50
+      componentSpecs:
+        - spec:
+            containers:
+              - image: fraud_classifier:xgb
+                imagePullPolicy: IfNotPresent
+                name: fraud-xgb
+                env:
+                  - name: VERSION
+                    value: "A"
+            terminationGracePeriodSeconds: 1
+      graph:
+        children: []
+        endpoint:
+          type: REST
+        name: fraud-xgb
+        type: MODEL
+    - name: fraud-rf
+      replicas: 1
+      traffic: 50
+      componentSpecs:
+        - spec:
+            containers:
+              - image: fraud_classifier:rf
+                imagePullPolicy: IfNotPresent
+                name: fraud-rf
+                env:
+                  - name: VERSION
+                    value: "B"
+            terminationGracePeriodSeconds: 1
+      graph:
+        children: []
+        endpoint:
+          type: REST
+        name: fraud-rf
+        type: MODEL
