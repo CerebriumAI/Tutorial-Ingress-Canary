@@ -15,12 +15,12 @@ By the end of this tutorial you will be able to:
 - Setup Seldon Core
 - Run an A/B test or Canary Deployment with Seldon Core
   
-This tutorial assumes you have done the previous tutorial on BentoML and Kubernetes on DigitalOcean, though we will be using [Minikube](https://minikube.sigs.k8s.io/docs/start/) as Istio requires nodes with more resources (at least a 4GB RAM node). If you wish to use your DigitalOcean cluster go for it, though you will need to pay! Download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
+This tutorial assumes you have done the previous tutorial on BentoML and [Minikube](https://minikube.sigs.k8s.io/docs/start/). If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires 4GB RAM)! Download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
 
 ## Istio Ingress
 First, we need to setup Istio for ingress. Seldon Core will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. First let's start Minikube and switch to that context.
 ```base
-minikube start --insecure-registry
+minikube start
 kubectl config use-context minikube
 ```
 
