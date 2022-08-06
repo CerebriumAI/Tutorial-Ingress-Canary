@@ -124,7 +124,7 @@ bento build
 
 Let's containerize them now using the correct Bento tags and tag them with their respective model names. Before we build, let's point our shell to minikube registry.
 ```bash
-minikube -p minikube docker-env | source
+eval $(minikube docker-env)
 bentoml containerize fraud_classifier:<xgb-tag> -t fraud-classifier:xgb
 bentoml containerize fraud_classifier:<rf-tag> -t fraud-classifier:rf
 ```
@@ -154,24 +154,24 @@ spec:
     project_name: fraud_detection_service
     deployment_version: v1
   predictors:
-    - name: fraud-xgb
+    - name: xgb
       replicas: 1
       traffic: 100
       componentSpecs:
         - spec:
             containers:
-              - image: fraud_classifier:xgb
+              - image: fraud-classifier:xgb
                 imagePullPolicy: IfNotPresent
-                name: fraud-xgb
+                name: xgb
                 env:
                   - name: VERSION
-                    value: "A"
+                    value: "XGBoost"
             terminationGracePeriodSeconds: 1
       graph:
         children: []
         endpoint:
           type: REST
-        name: fraud-xgb
+        name: xgb
         type: MODEL
 ```
 We can deploy this with `kubectl`.
@@ -199,24 +199,24 @@ Now we can add our Random Forest model. Do this under the `predictors` field.
 ```yaml
 predictors:
 ...
-  - name: fraud-rf
+  - name: rf
     replicas: 1
     traffic: 50
     componentSpecs:
       - spec:
           containers:
-            - image: fraud_classifier:rf
+            - image: fraud-classifier:rf
               imagePullPolicy: IfNotPresent
-              name: fraud-rf
+              name: rf
               env:
                 - name: VERSION
-                  value: "B"
+                  value: "RandomForest"
           terminationGracePeriodSeconds: 1
     graph:
       children: []
       endpoint:
         type: REST
-      name: fraud-rf
+      name: rf
       type: MODEL
 
 ```
