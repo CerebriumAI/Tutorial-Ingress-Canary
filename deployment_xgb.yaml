@@ -11,22 +11,22 @@ spec:
     project_name: fraud_detection_service
     deployment_version: v1
   predictors:
-    - name: fraud-xgb
+    - name: xgb
       replicas: 1
       traffic: 100
       componentSpecs:
         - spec:
             containers:
-              - image: fraud_classifier:xgb
+              - image: fraud-classifier:xgb
                 imagePullPolicy: IfNotPresent
-                name: fraud-xgb
+                name: xgb
                 env:
                   - name: VERSION
-                    value: "A"
+                    value: "XGBoost"
             terminationGracePeriodSeconds: 1
       graph:
         children: []
         endpoint:
           type: REST
-        name: fraud-xgb
+        name: xgb
         type: MODEL
