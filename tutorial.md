@@ -15,7 +15,7 @@ By the end of this tutorial you will be able to:
 - Setup Seldon Core
 - Run an A/B test or Canary Deployment with Seldon Core
   
-This tutorial assumes you have done the previous tutorial on BentoML and [Minikube](https://minikube.sigs.k8s.io/docs/start/). If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires 4GB RAM)! Download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
+This tutorial assumes you have done the previous tutorial on [BentoML](https://www.bentoml.com) and Kubernetes. We will be using [minikube](https://minikube.sigs.k8s.io/docs/start/) again. If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires 4GB RAM)! Download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
 
 ## Istio Ingress
 First, we need to setup Istio for ingress. Seldon Core will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. First let's start Minikube and switch to that context.
@@ -72,7 +72,9 @@ END
 Easy peasy! Now we have an ingress controller that will route traffic to our models.
 
 ## Seldon Core Setup
-Seldon Core is a service that will create ML deployments on our K8s cluster and provide the ability to conduct A/B testing and canary deployments, as well as monitor the performance of our models in a dashboard.
+Seldon Core is a service that will create ML deployments on our K8s cluster and provide the ability to conduct A/B testing and canary deployments, as well as monitor the performance of our models in a dashboard. There are a number of other services we can use to manage our ML deployments you should check out if you are interested.
+- [Cortex](https://www.cortex.dev) - Cortex is a tool that allows you to manage your ML deployments easily via CLI. It is AWS only, but it is a great choice if you are using the AWS EKS stack.
+- [KServe](https://github.com/kserve/kserve) - Very similar to Seldon Core, KServe is a Kubernetes-only service that allows you to manage your ML deployments. Seldon Core is slightly more feature rich.
 
 <!-- 
 There are 2 modules we need to install, the analytics component and the core component. We'll install the analytics chart first. This chart will install [Prometheus](http://www.prometheusanalytics.net) under the hood for pod resource monitoring with a Grafana based dashboard.
@@ -109,7 +111,12 @@ helm install seldon-core seldon-core-operator \
     --namespace seldon-system
 ```
 
-We're gonna need some images to deploy. We have supplied a training file `train.py` that will train 2 models and save them to your BentoML store. There is also a `bentofile.yaml` which we can use to build the two Bentos into a service. You will need to run `bento build` twice, modifying the `fraud_detection_service.py` file to use the correct model. You can do so by changing the `model_type` variable in `train.py`. Note the tag of the Bento.
+We're gonna need some images to deploy. We have supplied a training file `train.py` that will train 2 models and save them to your BentoML store.
+```bash
+python train.py
+```
+
+There is also a `bentofile.yaml` which we can use to build the two Bentos into a service. You will need to run `bento build` twice, modifying the `fraud_detection_service.py` file to use the correct model. You can do so by changing the `model_type` variable in `train.py`. Note the tags of each Bento.
 
 ```python
 #### ... in fraud_detection_service.py
