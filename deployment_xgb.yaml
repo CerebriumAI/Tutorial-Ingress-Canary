@@ -23,6 +23,8 @@ spec:
                 env:
                   - name: VERSION
                     value: "XGBoost"
+                ports:
+                - containerPort: 3000
             terminationGracePeriodSeconds: 1
       graph:
         children: []
