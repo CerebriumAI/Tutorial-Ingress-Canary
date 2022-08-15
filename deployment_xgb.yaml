@@ -4,7 +4,6 @@ metadata:
   labels:
     app: kserve
   name: fraud-classifier
-  namespace: kserve-deployments
 spec:
   predictor:
     containers:
