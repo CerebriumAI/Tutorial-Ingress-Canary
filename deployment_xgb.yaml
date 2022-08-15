@@ -1,34 +1,20 @@
-apiVersion: machinelearning.seldon.io/v1alpha2
-kind: SeldonDeployment
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
 metadata:
   labels:
-    app: seldon
-  name: fraud-detection
-  namespace: default
+    app: kserve
+  name: fraud-classifier
+  namespace: kserve-deployments
 spec:
-  name: fraud-detection
-  annotations:
-    project_name: fraud_detection_service
-    deployment_version: v1
-  predictors:
-    - name: xgb
-      replicas: 1
-      traffic: 100
-      componentSpecs:
-        - spec:
-            containers:
-              - image: fraud-classifier:xgb
-                imagePullPolicy: IfNotPresent
-                name: xgb
-                env:
-                  - name: VERSION
-                    value: "XGBoost"
-                ports:
-                - containerPort: 3000
-            terminationGracePeriodSeconds: 1
-      graph:
-        children: []
-        endpoint:
-          type: REST
+  predictor:
+    containers:
+      - image: fraud-classifier:xgb
+        imagePullPolicy: IfNotPresent
         name: xgb
-        type: MODEL
+        env:
+          - name: VERSION
+            value: "XGBoost"
+        ports:
+        - containerPort: 3000
+        securityContext:
+          runAsUser: 1034
