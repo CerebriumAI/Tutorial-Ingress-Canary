@@ -208,6 +208,7 @@ kubectl apply -f deployment_xgb.yaml
 ```
 
 Great, we have created our first deployment with KServe! We'll need to make a request to ensure it's working correctly. Grab the ingress host and port as environment variables.
+TODO: Make a request to the deployed service once working.
 ```bash
 export INGRESS_HOST=$(kubectl get po -l istio=ingressgateway -n istio-system -o jsonpath='{.items[0].status.hostIP}')
 export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
@@ -241,3 +242,5 @@ Adding the canary deployment is now just matter of applying the new deployment f
 ```bash
 kubectl apply -f deployment_canary.yaml
 ```
+
+TODO: Make multiple requests to the deployed service once working to demonstrate traffic split.
