@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+import bentoml
 
 # Load the data, sample such that the target classes are equal size
 df = pd.read_csv("data/train_transaction.csv")
@@ -25,13 +27,9 @@ X = pd.DataFrame(
 X["TransactionAmt"] = df[["TransactionAmt"]].to_numpy()
 
 # Split the dataset and train the model
-from sklearn.model_selection import train_test_split
-
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
-xgb = XGBClassifier()
-xgb_model = xgb.fit(X_train, y_train)
 
 xgb = XGBClassifier()
 xgb_model = xgb.fit(X_train, y_train)
@@ -39,7 +37,7 @@ xgb_model = xgb.fit(X_train, y_train)
 rf = RandomForestClassifier()
 rf_model = rf.fit(X_train, y_train)
 
-import bentoml
+# Save the models
 xgb_save = bentoml.sklearn.save_model(
     "fraud_classifier_xgb",
     xgb_model,
