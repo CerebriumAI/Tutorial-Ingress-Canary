@@ -158,6 +158,51 @@ kind load docker-image fraud-classifier:xgb fraud-classifier:rf
 ```
 
 ## Deployment with KServe
+
+
+**Currently, KServe is experiencing a bug with loading local images. For now, we will solely use [Dockerhub](https://hub.docker.com) as an alternative, so create a free account. To give you an idea of how to set it up, we will be using a *private* repo. If you are already using your one free private repo, feel free to use a public one instead.**
+
+### Setup your Dockerhub repo
+Once you've created your account, navigate to the *Create Repository* page.
+![media/dockerhub_repo.png](media/dockerhub_repo.png).
+Name the repository `fraud-classifier`, and select the **Private** option (You can also select **Public** if you want).
+
+We should create a separate namespace for our deployments. We've named it `kserve-deployments`, but name it whatever you like.
+```bash
+kubectl create namespace kserve-deployments
+```
+
+Next, tag the images you created with your private repo, and push them to the registry. You may need to login first with `docker login`.
+```bash
+docker tag fraud-classifier:xgb <dockerhub-username>/fraud-classifier:xgb
+docker push <dockerhub-username>/fraud-classifier:xgb
+
+docker tag fraud-classifier:rf <dockerhub-username>/fraud-classifier:rf
+docker push <dockerhub-username>/fraud-classifier:rf
+```
+
+If you've selected **Public**, you can skip to the next section. Otherwise, you will need to create a `imagePullSecrets` object on your cluster. This is a secret that contains the parameters necessary to authenticate with Dockerhub. Name this secret `dockerhub-registry` and put it in the newly created namespace.
+```bash
+kubectl create secret docker-registry dockerhub-registry \
+  --docker-server=https://index.docker.io/v1/ \
+  --docker-email=<dockerhub-email> \
+  --docker-username=<dockerhub-user> \
+  --docker-password=<dockerhub-password>
+  -n kserve-deployments
+```
+
+Check that your secret was created correctly.
+```bash
+kubectl get secret dockerhub-registry --output="jsonpath={.data.\.dockerconfigjson}" | base64 --decode
+```
+
+There are now two options for deploying our images in the private repo. The first is to add the `imagePullSecrets` object to the deployment under the spec. The second is to patch the a service account to always the `imagePullSecrets` object to any manifest deployed in the *kserve-deployments* namespace. We are going to do the latter and patch the default service account.
+```bash
+kubectl patch serviceaccount default -p "{\"imagePullSecrets\": [{\"name\": \"dockerhub-registry\"}]}" -n kserve-deployments
+```
+
+### Deploy the KServe manifest
+
 Before we deploy a KServe manifest, let's go through the benefits of using KServe. Apart from allowing us to conduct Canary deployments, KServe gives us a number of tools to use to manage our deployments. Whether you need such functionality will largely depend on how mature your organization is and how much scalability you require with regards to machine learning services. We do recommended running Canaries at all levels of scale apart from your initial rollout, which is our main motivation behind this tut, but here are some of the other things KServe offers:
 - *ModelMesh* - In cases where you frequently need to change which model to use for a given situation, ModelMesh is a great tool to use. The system will switch between models automatically without having to redeploy, ensuring you will use the best model for the current available computation to maximize responsiveness to users.
 - *Pre/Post Processing Inference Graph* -  KServe allows you to specify an Inference Graph to build inference pipelines. Within the graph, you can define pre and post processing steps, traffic splits, model ensembles and model switching based on defined conditions. You can read more about how this works [here](https://kserve.github.io/website/0.9/modelserving/inference_graph/).
@@ -195,11 +240,6 @@ spec:
         - containerPort: 3000
         securityContext:
           runAsUser: 1034
-```
-
-We should create a separate namespace for our deployment. We've named it `kserve-deployments`, but name it whatever you like.
-```bash
-kubectl create namespace kserve-deployments
 ```
 
 We can deploy now deploy our manifest with `kubectl`.
