@@ -7,7 +7,7 @@ metadata:
   namespace: kserve-deployments
 spec:
   predictor:
-    canaryTrafficPercent: 50
+    canaryTrafficPercent: 20
     containers:
       - image: elijahrou/fraud-classifier:rf
         imagePullPolicy: IfNotPresent
