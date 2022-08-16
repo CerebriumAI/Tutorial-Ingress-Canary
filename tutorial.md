@@ -6,25 +6,26 @@ When we deploy ML models, we are often unsure of the performance of our model in
 We are going to use two core technologies to implement canary deployments, [Istio](https://istio.io) and [KServe](https://kserve.github.io/website/0.9/). Briefly, Istio is a service mesh that will supply an ingress controller, while KServe is a service that will create deployments on our K8s cluster serve our models through Istio. It is worth noting that you could use [Ambassador](https://www.getambassador.io) as your ingress controller instead of Istio, but we ran into issues with Ambassador so use at your discretion!
 
 Prerequisites:
-- Install Minikube
-- Install BentoML
 - Previous Deployment Tut
+- Install BentoML
 
 By the end of this tutorial you will be able to:
 - Setup Istio for ingress
-- Setup Seldon Core
+- Setup KServe
 - Run a Canary Deployment with KServe
   
-This tutorial assumes you have done the [previous tutorial](https://hippocampus.podia.com/view/courses/build-an-end-to-end-production-grade-fraud-predictor/1462864-deploying-with-bentoml-on-kubernetes) on [BentoML](https://www.bentoml.com) and Kubernetes. We will be using [minikube](https://minikube.sigs.k8s.io/docs/start/) again. If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires at least 4GB RAM)! You should have it already if you have done previous tuts, but you can download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
+This tutorial assumes you have done the [previous tutorial](https://hippocampus.podia.com/view/courses/build-an-end-to-end-production-grade-fraud-predictor/1462864-deploying-with-bentoml-on-kubernetes) on [BentoML](https://www.bentoml.com) and Kubernetes. We will be using [kind](https://kind.sigs.k8s.io) instead of minikube this time, just to expose you to another local K8s option. If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires at least 4GB RAM)! You should have it already if you have done previous tuts, but you can download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
 
 ## Istio Ingress Setup
-Firstly, we need to setup Istio for ingress. KServe will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. First let's start minikube and switch to that context. You may need to go through specific platform setup if you don't want to use minikube, so consult the relevant guide [here](https://istio.io/latest/docs/setup/platform-setup/). We provide 2 install methods, though you should stick with the first if you don't use [helm](https://helm.sh).
-
-For this tut, minikube we will need additional resources for Istio. Start minikube with at least 4GB of RAM and 2 vCPUs. In this command we use 8GB of RAM and 4 vCPUs. You may need to delete your previously created cluster or create a new one under a new context.
-```base
-minikube start --memory 8192 --cpus 4
-kubectl config use-context minikube
+Firstly, we need to setup Istio for ingress. KServe will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. Firstly, we need to install kind, create a cluster and switch the context. There are additional resources [here](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) should you need them.
+```bash
+brew install kind
+kind create cluster
+kubectl config use-context kind-kind
 ```
+
+You may need to go through specific platform setup if you don't want to use kind, so consult the relevant guide [here](https://istio.io/latest/docs/setup/platform-setup/). We provide 2 install methods, though you should stick with the first if you don't use [helm](https://helm.sh).
+
 ### Main Install: `istioctl` install
 The recommended way to setup Istio is to use the [istioctl](https://istio.io/latest/docs/setup/quick-start.html) command line tool.
 We will use the following command to install for macOS, but obviously use the relevant install method for your platform. You can read the docs [here](https://istio.io/latest/docs/setup/install/istioctl/#prerequisites).
@@ -35,7 +36,7 @@ brew install istioctl
 
 Installation should now be as simple as running the install command.
 ```bash
-istioctl install
+istioctl install -y
 ```
 
 ### Alternative Install: Helm
@@ -91,6 +92,26 @@ KServe is a service that will create ML deployments on our K8s cluster and provi
 - [Cortex](https://www.cortex.dev) - Cortex is a tool that allows you to manage your ML deployments easily via CLI. It is AWS only, but it is a great choice if you are using the AWS EKS stack.
 - [Seldon Core](https://www.seldon.io/solutions/open-source-projects/core) - Very similar to KServe, Seldon Core is a Kubernetes-only service that allows you to manage your ML deployments. Seldon Core is slightly more feature rich, but is a more complex tool to setup and use. However, compatibility with BentoML 1.0 in its current state is limited, as the framework is built as the backbone for their proprietary platform Seldon Deploy.
 
+### Install KNative
+We are using the serverless capability for KServe, so we need to install the KNative runtime. Install the CRDs and core component charts.
+```bash
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
+kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
+```
+
+There is a controller that KNative uses to integrate with Istio. Install the controller next.
+```bash
+kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v1.6.0/net-istio.yaml
+```
+
+Finally, install the component that integrates with cert-manager.
+```bash
+kubectl apply -f https://github.com/knative/net-certmanager/releases/download/knative-v1.6.0/release.yaml
+```
+
+
+### Install KServe
+
 [cert-manager](https://cert-manager.io/) is a service that allows us to easily manage TLS certificates. It is a required dependency for KServe. Install it before proceeding.
 ```bash
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
@@ -99,27 +120,12 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 Using `kubectl`, let's install the core manifest. 
 ```bash
 kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.9.0/kserve.yaml
-
 ```
 
 There are also default serving runtimes which are necessary for KServe to function.
 ```bash
 kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.9.0/kserve-runtimes.yaml
 ```
-
-Lastly, you'll need to modify the default deployment mode and ingress.
-```bash
-kubectl patch configmap/inferenceservice-config -n kserve --type=strategic -p '{"data": {"deploy": "{\"defaultDeploymentMode\": \"RawDeployment\"}"}}'
-```
-
-<!-- From now on, in your deployments, you will need to modify `ingressClassName` in the `ingress` field to the `IngressClass` name created in the previous step.
-```yaml
-ingress: |-
-{
-    "ingressClassName" : "your-ingress-class",
-}
-``` -->
-
 ## Creating our Bentos
 
 We're gonna need some images to deploy. We have supplied a training file `train.py` that will train 2 models and save them to your BentoML store.
@@ -140,16 +146,19 @@ bento build
 bento build
 ```
 
-Let's containerize them now using the correct Bento tags and tag them with their respective model names. Before we build, let's point our shell to the minikube registry.
+Let's containerize them now using the correct Bento tags and tag them with their respective model names.
 ```bash
-eval $(minikube docker-env)
 bentoml containerize fraud_classifier:<xgb-tag> -t fraud-classifier:xgb
 bentoml containerize fraud_classifier:<rf-tag> -t fraud-classifier:rf
 ```
 
+Lastly, let's load both our images into the kind container registry!
+```bash
+kind load docker-image fraud-classifier:xgb fraud-classifier:rf
+```
+
 ## Deployment with KServe
 Before we deploy a KServe manifest, let's go through the benefits of using KServe. Apart from allowing us to conduct Canary deployments, KServe gives us a number of tools to use to manage our deployments. Whether you need such functionality will largely depend on how mature your organization is and how much scalability you require with regards to machine learning services. We do recommended running Canaries at all levels of scale apart from your initial rollout, which is our main motivation behind this tut, but here are some of the other things KServe offers:
-- *Serverless Inference* - This feature enables autoscaling based on request volume, and allows KServe to scale down a service to and from zero resources. This sort of install is useful if you are handling many requests. In most cases, this is likely unnecessary, but you can read more about the installation [here](https://kserve.github.io/website/0.9/admin/serverless/).
 - *ModelMesh* - In cases where you frequently need to change which model to use for a given situation, ModelMesh is a great tool to use. The system will switch between models automatically without having to redeploy, ensuring you will use the best model for the current available computation to maximize responsiveness to users.
 - *Pre/Post Processing Inference Graph* -  KServe allows you to specify an Inference Graph to build inference pipelines. Within the graph, you can define pre and post processing steps, traffic splits, model ensembles and model switching based on defined conditions. You can read more about how this works [here](https://kserve.github.io/website/0.9/modelserving/inference_graph/).
 - *Model Monitoring & Explainability* - KServe has built-in integration with both [Alibi Detect](https://kserve.github.io/website/0.9/modelserving/detect/alibi_detect/alibi_detect/) and [Alibi Explain](https://kserve.github.io/website/0.9/modelserving/explainer/explainer/). This enables outlier and drift detection easily, as well as a black-box model for explainability. We will cover these specific services in a future version of this tutorial.
@@ -198,50 +207,37 @@ We can deploy now deploy our manifest with `kubectl`.
 kubectl apply -f deployment_xgb.yaml
 ```
 
-Great, we have created our first deployment with KServe! Check that it's running correctly with minikube.
+Great, we have created our first deployment with KServe! We'll need to make a request to ensure it's working correctly. Grab the ingress host and port as environment variables.
 ```bash
-minikube service fraud-detection-predictor-default -n kserve-deployments
+export INGRESS_HOST=$(kubectl get po -l istio=ingressgateway -n istio-system -o jsonpath='{.items[0].status.hostIP}')
+export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
 ```
 
 ## Canary Deployment
 Canary deployments are a way to progressively rollout your new models to a subset of users, monitoring the performance of your newly deployed model versus the original baseline. They work by deploying two or more versions of your model, routing some traffic to the baseline and the rest to the other. As you become more confident in the new model, you can increase traffic to the new service and eventually switch to it entirely. This is a great way to ensure the new model is performing as expected, while also monitoring the service for any potential errors.
 
-Let's add a canary deployment. Duplicate your `deployment_xgb.yaml` file and rename it `deployment_canary.yaml`. In the new file, rename the `name` field to `fraud_detection_canary`.
+Let's add a canary deployment. Duplicate your `deployment_xgb.yaml` file and rename it `deployment_canary.yaml`. In the new file, rename the `name` field to `rf` and change the image pulled to `fraud-classifier:rf`, as such.
 
 ```yaml
-metadata:
-  labels:
-    app: seldon
-  name: fraud-detection-canary
 ...
 spec:
-  name: fraud_detection-canary
-...
+  predictor:
+    canaryTrafficPercent: 50
+    containers:
+      - image: fraud-classifier:rf
+        imagePullPolicy: IfNotPresent
+        name: rf
+        env:
+          - name: VERSION
+            value: "RandomForest"
+        ports:
+        - containerPort: 3000
+        securityContext:
+          runAsUser: 1034
 ```
 
-Now we can add our Random Forest model. Do this under the `predictors` field.
+Adding the canary deployment is now just matter of applying the new deployment file!
 
-```yaml
-predictors:
-...
-  - name: rf
-    replicas: 1
-    traffic: 50
-    componentSpecs:
-      - spec:
-          containers:
-            - image: fraud-classifier:rf
-              imagePullPolicy: IfNotPresent
-              name: rf
-              env:
-                - name: VERSION
-                  value: "RandomForest"
-          terminationGracePeriodSeconds: 1
-    graph:
-      children: []
-      endpoint:
-        type: REST
-      name: rf
-      type: MODEL
-
+```bash
+kubectl apply -f deployment_canary.yaml
 ```
