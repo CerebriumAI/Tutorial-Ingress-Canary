@@ -9,7 +9,7 @@ spec:
   predictor:
     canaryTrafficPercent: 50
     containers:
-      - image: fraud-classifier:rf
+      - image: elijahrou/fraud-classifier:rf
         imagePullPolicy: IfNotPresent
         name: rf
         env:
