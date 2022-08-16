@@ -172,9 +172,9 @@ model_type = "xgb"
 # model_type = "rf" # Uncomment this
 ```
 ```bash
-bento build
+bentoml build
 # Change model_type to rf after first build
-bento build
+bentoml build
 ```
 
 Let's containerize them now using the correct Bento tags and tag them with their respective model names. Typically, before you containerize for minikube, you should point docker to minikube's docker daemon. However, we will be using dockerhub to host our images for this tutorial.
