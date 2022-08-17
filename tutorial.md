@@ -213,7 +213,7 @@ kubectl create secret docker-registry dockerhub-registry \
   --docker-server=https://index.docker.io/v1/ \
   --docker-email=<dockerhub-email> \
   --docker-username=<dockerhub-user> \
-  --docker-password=<dockerhub-password>
+  --docker-password=<dockerhub-password> \
   -n kserve-deployments
 ```
 
@@ -256,7 +256,7 @@ Now let's add the spec block. This is where we specify the ML models to use for 
 spec:
   predictor:
     containers:
-      - image: fraud-classifier:xgb
+      - image: <dockerhub-username>/fraud-classifier:xgb
         imagePullPolicy: IfNotPresent
         name: xgb
         env:
@@ -270,7 +270,7 @@ spec:
 
 We can deploy now deploy our manifest with `kubectl`.
 ```bash
-kubectl apply -f deployment_xgb.yaml
+kubectl apply -f deployment_xgb.yaml -n kserve-deployments
 ```
 
 This should take about a minute to fully deploy. You can check that status of the InferenceService by running:
@@ -310,7 +310,7 @@ spec:
   predictor:
     canaryTrafficPercent: 20
     containers:
-      - image: fraud-classifier:rf
+      - image: <dockerhub-username>/fraud-classifier:rf
         imagePullPolicy: IfNotPresent
         name: rf
         env:
@@ -376,7 +376,7 @@ In production, if you wish to promote the new model fully, just remove `canaryTr
 spec:
   predictor:
     containers:
-      - image: fraud-classifier:rf
+      - image: <dockerhub-username>/fraud-classifier:rf
         imagePullPolicy: IfNotPresent
         name: rf
         env:
