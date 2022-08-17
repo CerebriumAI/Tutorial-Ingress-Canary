@@ -7,7 +7,7 @@ metadata:
 spec:
   predictor:
     containers:
-      - image: elijahrou/fraud-classifier:xgb
+      - image: mike157/fraud-classifier:xgb
         imagePullPolicy: IfNotPresent
         name: xgb
         env:

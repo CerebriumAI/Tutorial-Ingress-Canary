@@ -1,9 +1,9 @@
 # Deployment 2.0: Canaries with KServe
-In this tutorial, we will build on our previous deployment tutorial, augmenting our cluster with an ingress and adding the ability to conduct canary deployments.
+In this tutorial, we will build on our previous deployment tutorial, augmenting our cluster with ingress (technical word for internet traffic entering out system) and adding the ability to conduct canary deployments.
 
-When we deploy ML models, we are often unsure of the performance of our model in the real world. Methods like A/B testing and canary deployments allow us to evaluate the performance of our model and avoid erroneous deployments where the model is not performing as expected. This is done by splitting traffic between two ML services, typically your *baseline* model and a new model. As you become confident in the newly deployed service, you can increase the traffic to the new model and gradually reduce the traffic to the baseline model. This ensures a smooth deployment to your users with a little downtime and interruption as possible.
+When we deploy ML models, we are often unsure of the performance of our model in the real world. Methods like A/B testing and canary deployments allow us to evaluate the performance of our model and avoid erroneous deployments where the model is not performing as expected. This is done by splitting traffic between two ML services, typically your *baseline* model and a new model. As you become confident in the newly deployed service, you can increase the traffic to the new model and gradually reduce the traffic to the baseline model. This ensures a smooth deployment to your users with no downtime and interruption.
 
-We are going to use two core technologies to implement canary deployments, [Istio](https://istio.io) and [KServe](https://kserve.github.io/website/0.9/). Briefly, Istio is a service mesh that will supply an ingress controller, while KServe is a service that will create deployments on our K8s cluster serve our models through Istio. It is worth noting that you could use [Ambassador](https://www.getambassador.io) as your ingress controller instead of Istio, but we ran into issues with Ambassador so use at your discretion!
+We are going to use two core technologies to implement canary deployments, [Istio](https://istio.io) and [KServe](https://kserve.github.io/website/0.9/). Briefly, Istio is a service mesh that will supply an ingress controller, while KServe is a service that will create deployments on our K8s cluster serving our models through Istio. It is worth noting that you could use [Ambassador](https://www.getambassador.io) as your ingress controller instead of Istio, but we found it buggy so use at your discretion!
 
 Prerequisites:
 - Previous Deployment Tut
@@ -18,9 +18,9 @@ By the end of this tutorial you will be able to:
 This tutorial assumes you have done the [previous tutorial](https://hippocampus.podia.com/view/courses/build-an-end-to-end-production-grade-fraud-predictor/1462864-deploying-with-bentoml-on-kubernetes) on [BentoML](https://www.bentoml.com) and Kubernetes. We will again be using [minikube](https://minikube.sigs.k8s.io/docs/). If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires at least 4GB RAM)! You should have it already if you have done previous tuts, but you can download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
 
 ## Istio Ingress Setup
-Firstly, we need to setup Istio for ingress. Ingress ias an API object which provides routing rules to manage both internal and external access to services in a Kubernetes cluster, acting as a single access source. We will utilise Istio as out ingress object to provide this functionality. In turn, KServe will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. Firstly, we need to start our minikube cluster. minikube will need extra resources for Istio, at least 4GB and 2 CPUs, so you may need to delete your old cluster first with `minikube delete`. Alternatively, you could try alter the resources assigned to your current cluster. Here, we start our cluster with 12GB of RAM and 4 CPUs.
+Firstly, we need to setup Istio for ingress. Ingress is an API object which provides routing rules to manage both internal and external access to services in a Kubernetes cluster, acting as a single access source. We will utilise Istio as out ingress object to provide this functionality. In turn, KServe will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. Firstly, we need to start our minikube cluster. minikube will need extra resources for Istio, at least 4GB and 2 CPUs, so you may need to delete your old cluster first with `minikube delete`. Alternatively, you could try alter the resources assigned to your current cluster. Here, we start our cluster with 12GB of RAM and 4 CPUs.
 ```bash
-minikube start --memory 12576 --cpus 4
+minikube start --memory 4096 --cpus 4
 ```
 
 You may need to go through specific platform setup if you don't want to use minikube, so consult the relevant guide [here](https://istio.io/latest/docs/setup/platform-setup/). We provide 2 install methods, though you should stick with the first if you don't use [helm](https://helm.sh). You must note that should you choose to use something other than minikube, you will need to setup a load balancer in your cluster, so that you can access the gateway that Istio creates. minikube provides `minikube-tunnel`, which allows *127.0.0.1* access to the gateway.
@@ -172,9 +172,9 @@ model_type = "xgb"
 # model_type = "rf" # Uncomment this
 ```
 ```bash
-bento build
+bentoml build
 # Change model_type to rf after first build
-bento build
+bentoml build
 ```
 
 Let's containerize them now using the correct Bento tags and tag them with their respective model names. Typically, before you containerize for minikube, you should point docker to minikube's docker daemon. However, we will be using dockerhub to host our images for this tutorial.
@@ -213,7 +213,7 @@ kubectl create secret docker-registry dockerhub-registry \
   --docker-server=https://index.docker.io/v1/ \
   --docker-email=<dockerhub-email> \
   --docker-username=<dockerhub-user> \
-  --docker-password=<dockerhub-password>
+  --docker-password=<dockerhub-password> \
   -n kserve-deployments
 ```
 
@@ -270,7 +270,7 @@ spec:
 
 We can deploy now deploy our manifest with `kubectl`.
 ```bash
-kubectl apply -f deployment_xgb.yaml
+kubectl apply -f deployment_xgb.yaml -n kserve-deployments
 ```
 
 This should take about a minute to fully deploy. You can check that status of the InferenceService by running:
@@ -354,7 +354,7 @@ You'll notice that roughly 80% of the requests were routed to the XGBoost model 
 ... # in deployment_canary.yaml
 spec:
   predictor:
-    canaryTrafficPercent: 20
+    canaryTrafficPercent: 50
 ...
 ```
 
