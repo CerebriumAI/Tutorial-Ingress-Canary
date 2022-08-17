@@ -1,25 +1,26 @@
 import requests
 import json
 from time import sleep
+
 header = {"Host": "fraud-classifier.kserve-deployments.example.com"}
-body = [{
-    "isFraud": 0,
-    "TransactionAmt": 495.0,
-    "ProductCD": "W",
-    "card4": "visa",
-    "P_emaildomain": "live.com",
-    "R_emaildomain": None,
-    "M1": "T",
-    "M2": "T",
-    "M3": "T"
-}]
+body = [
+    {
+        "isFraud": 0,
+        "TransactionAmt": 495.0,
+        "ProductCD": "W",
+        "card4": "visa",
+        "P_emaildomain": "live.com",
+        "R_emaildomain": None,
+        "M1": "T",
+        "M2": "T",
+        "M3": "T",
+    }
+]
 
 count = 0
 for i in range(100):
     response = requests.post(
-        "http://127.0.0.1/fraud-classifier",
-        headers=header,
-        data=json.dumps(body)
+        "http://127.0.0.1/fraud-classifier", headers=header, data=json.dumps(body)
     )
     if response.json()[0] == 1:
         count += 1

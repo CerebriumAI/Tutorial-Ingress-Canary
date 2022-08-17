@@ -7,10 +7,12 @@ from bentoml.io import PandasDataFrame, JSON
 model_type = "xgb"
 # model_type = "rf"
 
-ohe_encoder = bentoml.models.get(f"fraud_classifier_{model_type}:latest").custom_objects[
-    "ohe_encoder"
-]
-fraud_classifier_runner = bentoml.sklearn.get(f"fraud_classifier_{model_type}:latest").to_runner()
+ohe_encoder = bentoml.models.get(
+    f"fraud_classifier_{model_type}:latest"
+).custom_objects["ohe_encoder"]
+fraud_classifier_runner = bentoml.sklearn.get(
+    f"fraud_classifier_{model_type}:latest"
+).to_runner()
 
 svc = bentoml.Service("fraud_classifier", runners=[fraud_classifier_runner])
 
