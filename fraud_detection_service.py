@@ -4,8 +4,8 @@ import pandas as pd
 import bentoml
 from bentoml.io import PandasDataFrame, JSON
 
-model_type = "xgb"
-# model_type = "rf"
+# model_type = "xgb"
+model_type = "rf"
 
 ohe_encoder = bentoml.models.get(f"fraud_classifier_{model_type}:latest").custom_objects[
     "ohe_encoder"

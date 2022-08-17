@@ -7,9 +7,9 @@ metadata:
   namespace: kserve-deployments
 spec:
   predictor:
-    canaryTrafficPercent: 20
+    canaryTrafficPercent: 50
     containers:
-      - image: elijahrou/fraud-classifier:rf
+      - image: <docker_hub_username>/fraud-classifier:rf
         imagePullPolicy: IfNotPresent
         name: rf
         env:
