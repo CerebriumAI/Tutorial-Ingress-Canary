@@ -18,9 +18,9 @@ By the end of this tutorial you will be able to:
 This tutorial assumes you have done the [previous tutorial](https://hippocampus.podia.com/view/courses/build-an-end-to-end-production-grade-fraud-predictor/1462864-deploying-with-bentoml-on-kubernetes) on [BentoML](https://www.bentoml.com) and Kubernetes. We will again be using [minikube](https://minikube.sigs.k8s.io/docs/). If you wish to use a managed cloud cluster go for it, though you will need to pay for additional resources for Istio (it requires at least 4GB RAM)! You should have it already if you have done previous tuts, but you can download the data required for this tutorial from [here](https://drive.google.com/file/d/1MidRYkLdAV-i0qytvsflIcKitK4atiAd/view?usp=sharing). This is originally from a [Kaggle dataset](https://www.kaggle.com/competitions/ieee-fraud-detection/data) for Fraud Detection. Place this dataset in a `data` directory in the root of your project.
 
 ## Istio Ingress Setup
-Firstly, we need to setup Istio for ingress. Ingress is an API object which provides routing rules to manage both internal and external access to services in a Kubernetes cluster, acting as a single access source. We will utilise Istio as out ingress object to provide this functionality. In turn, KServe will utilize Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. Firstly, we need to start our minikube cluster. minikube will need extra resources for Istio, at least 4GB and 2 CPUs, so you may need to delete your old cluster first with `minikube delete`. Alternatively, you could try alter the resources assigned to your current cluster. Here, we start our cluster with 12GB of RAM and 4 CPUs.
+Firstly, we need to setup Istio for ingress. Ingress is an API object which provides routing rules to manage both internal and external access to services in a Kubernetes cluster, acting as a single access source. We will utilize Istio as out ingress object to provide this functionality. In turn, KServe will use Istio to ensure that our traffic is rooted to the appropriate pods through the same endpoint. This process is pretty simple. Firstly, we need to start our minikube cluster. minikube will need extra resources for Istio, at least 4GB and 2 CPUs, so you may need to delete your old cluster first with `minikube delete`. Alternatively, you could try alter the resources assigned to your current cluster. Here, we start our cluster with 8GB of RAM and 4 CPUs.
 ```bash
-minikube start --memory 4096 --cpus 4
+minikube start --memory 8192 --cpus 4
 ```
 
 You may need to go through specific platform setup if you don't want to use minikube, so consult the relevant guide [here](https://istio.io/latest/docs/setup/platform-setup/). We provide 2 install methods, though you should stick with the first if you don't use [helm](https://helm.sh). You must note that should you choose to use something other than minikube, you will need to setup a load balancer in your cluster, so that you can access the gateway that Istio creates. minikube provides `minikube-tunnel`, which allows *127.0.0.1* access to the gateway.
@@ -97,7 +97,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ```
 
 ### Install KNative
-We are using the serverless capability for KServe, so we need to install the KNative runtime. Install the CRDs and core component charts.
+We are using the serverless capability for KServe, which will allow our KServe services to both autoscale and run canaries, so we need to install the KNative runtime as a prerequisite. Install the CRDs and core component charts.
 ```bash
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
@@ -169,7 +169,7 @@ We're gonna need some images to deploy. We have supplied a training file `train.
 python train.py
 ```
 
-There is also a `bentofile.yaml` which we can use to build the two Bentos into a service. You will need to run `bento build` twice, modifying the `fraud_detection_service.py` file to use the correct model. You can do so by changing the `model_type` variable in `train.py`. Note the tags of each Bento.
+There is also a `bentofile.yaml` which we can use to build the two Bentos into a service. You will need to run `bento build` twice, modifying the `fraud_detection_service.py` file to use the correct model. You can do so by changing the `model_type` variable in `train.py`. Note the tags of each Bento when they have been built for each model.
 
 ```python
 #### ... in fraud_detection_service.py
@@ -282,7 +282,7 @@ This should take about a minute to fully deploy. You can check that status of th
 ```bash
 kubectl get isvc fraud-classifier -n kserve-deployments
 ```
-If the status is still `Unknown`, you can check the KNative revision was created correctly by running:
+If the status is still `Unknown`, you can check if the KNative revision was created correctly by running:
 ```bash
 kubectl get revision $(kubectl get configuration fraud-classifier-predictor-default --output jsonpath="{.status.latestCreatedRevisionName}" -n kserve-deployments) -n kserve-deployments
 ```
@@ -344,7 +344,7 @@ For a further check, grab all the pods in the `kserve-deployments` namespace. Yo
 kubectl get pods -n kserve-deployments
 ```
 
-From the above command, make sure that the second container is in a **Running** state. To demonstrate how this works we have supplied a file, `test_requests.py`, that will make 100 requests to the deployed service. We have chosen an example such that the XGBoost model will output `[1]` and the Random Forest model will output `[0]`. Run the file.
+From the above command, make sure that the second container is in a **Running** state. There may be a problem with the image otherwise. To demonstrate how the canary works we have supplied a file, `test_requests.py`, that will make 100 requests to the deployed service. We have chosen an example such that the XGBoost model will output `[1]` and the Random Forest model will output `[0]`. Run the file.
 
 ```bash
 python test_requests.py
@@ -397,7 +397,7 @@ Apply the manifest again.
 kubectl apply -f deployment_canary.yaml -n kserve-deployments
 ```
 
-If you run the previous `kubectl get isvc` command, you'll see that there is now only single revision, `fraud-classifier-predictor-default-00002`. Run the `test_requests.py` file one last time, for a sanity check.
+If you run the previous `kubectl get isvc` command now, you'll see that there is now only single revision, `fraud-classifier-predictor-default-00002`. Run the `test_requests.py` file one last time, for a sanity check.
 
 OUTPUT:
 ```
