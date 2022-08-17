@@ -159,6 +159,11 @@ kube-system       storage-provisioner                           1/1     Running 
 ```
 ## Creating our Bentos
 
+First install the libaries needed via the requirements.txt. Its extremely important you use the same libaries versions or you could run into issues later in the tutorial. Run the command below:
+```bash
+pip install -r requirements.txt
+```
+
 We're gonna need some images to deploy. We have supplied a training file `train.py` that will train 2 models and save them to your BentoML store.
 ```bash
 python train.py
@@ -282,7 +287,7 @@ If the status is still `Unknown`, you can check the KNative revision was created
 kubectl get revision $(kubectl get configuration fraud-classifier-predictor-default --output jsonpath="{.status.latestCreatedRevisionName}" -n kserve-deployments) -n kserve-deployments
 ```
 
-Great, we have created our first deployment with KServe! We'll need to make a request to ensure it's working correctly. In a separate terminal, run the following command:
+Great, we have created our first deployment with KServe! We'll need to make a request to ensure it's working correctly. In a separate terminal, run the following command since it will create a process that remains open so don't expect a response:
 ```bash
 minikube tunnel
 ```
@@ -339,7 +344,7 @@ For a further check, grab all the pods in the `kserve-deployments` namespace. Yo
 kubectl get pods -n kserve-deployments
 ```
 
-To demonstrate how this works we have supplied a file, `test_requests.py`, that will make 100 requests to the deployed service. We have chosen an example such that the XGBoost model will output `[1]` and the Random Forest model will output `[0]`. Run the file.
+Make sure from the above command that the second container is in a 'Running' state. To demonstrate how this works we have supplied a file, `test_requests.py`, that will make 100 requests to the deployed service. We have chosen an example such that the XGBoost model will output `[1]` and the Random Forest model will output `[0]`. Run the file.
 
 ```bash
 python test_requests.py
